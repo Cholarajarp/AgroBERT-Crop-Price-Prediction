@@ -929,6 +929,10 @@
 
             <div class="chatbot-sidebar">
                 <h2 id="chatbotHeader" class="section-header text-center">AgriBERT Chatbot</h2>
+                <div class="input-group mb-4">
+                    <label for="geminiApiKey" id="geminiApiKeyLabel" class="block text-sm font-medium text-gray-700">Gemini API Key (Optional)</label>
+                    <input type="password" id="geminiApiKey" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Enter your Gemini API Key">
+                </div>
                 <div class="chatbot-messages" id="chatbotMessages">
                     <div class="message-bubble bot-message">
                         <p id="chatWelcomeMessage">Hello! I'm AgriBERT. How can I help you?</p>
@@ -1538,12 +1542,16 @@
                 chatbotMessagesDiv.scrollTop = chatbotMessagesDiv.scrollHeight;
                 
                 try {
-                    const payload = { query: userQuery };
+                    const payload = {
+                        query: userQuery,
+                        apiKey: geminiApiKeyInput.value // Send user-provided key if available
+                    };
                     const result = await postData(`${API_BASE_URL}/chat`, payload);
                     botThinkingDiv.innerHTML = `<p>${result.response}</p>`;
                 } catch (error) {
                     console.error("Chatbot failed:", error);
-                    botThinkingDiv.innerHTML = `<p>Error: Could not connect to the chat service.</p>`;
+                    const errorJson = await error.response.json();
+                    botThinkingDiv.innerHTML = `<p>Error: ${errorJson.response || "Could not connect to the chat service."}</p>`;
                 } finally {
                     chatbotMessagesDiv.scrollTop = chatbotMessagesDiv.scrollHeight;
                 }
