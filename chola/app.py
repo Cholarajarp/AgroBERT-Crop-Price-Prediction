@@ -7,10 +7,8 @@ from flask_cors import CORS
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# Load environment variables from .env file using absolute path
-from pathlib import Path
-env_path = Path(__file__).parent / "environment.env"
-load_dotenv(env_path)
+# Load environment variables from .env file
+load_dotenv("environment.env")
 
 # --- Initialize Flask App ---
 app = Flask(__name__, template_folder='templates')
@@ -86,19 +84,45 @@ def get_xai_insights():
     return factors[:4]
 
 def get_weather_data(market):
-    """Placeholder for a real weather API call."""
-    conditions = ["Clear", "Partly Cloudy", "Light Rain", "Sunny"]
-    temp = 28 + random.randint(0, 10)
-    condition = random.choice(conditions)
+    """Simulated weather data based on market/location."""
+    # Example: Add more realistic, location-based weather simulation
+    market_weather = {
+        'Delhi':    {'temp': random.randint(25, 40), 'condition': random.choice(['Sunny', 'Partly Cloudy', 'Light Rain'])},
+        'Mumbai':   {'temp': random.randint(24, 34), 'condition': random.choice(['Rainy', 'Cloudy', 'Clear'])},
+        'Chennai':  {'temp': random.randint(27, 38), 'condition': random.choice(['Humid', 'Sunny', 'Cloudy'])},
+        'Kolkata':  {'temp': random.randint(26, 36), 'condition': random.choice(['Rainy', 'Clear', 'Partly Cloudy'])},
+        'Bangalore':{'temp': random.randint(20, 32), 'condition': random.choice(['Cloudy', 'Clear', 'Light Rain'])},
+        'Hyderabad':{'temp': random.randint(25, 37), 'condition': random.choice(['Sunny', 'Cloudy', 'Rainy'])},
+        'Pune':     {'temp': random.randint(22, 34), 'condition': random.choice(['Clear', 'Cloudy', 'Light Rain'])},
+        'Ahmedabad':{'temp': random.randint(28, 42), 'condition': random.choice(['Sunny', 'Clear', 'Partly Cloudy'])},
+    }
+    default_weather = {'temp': random.randint(25, 35), 'condition': random.choice(['Clear', 'Cloudy', 'Light Rain'])}
+    weather = market_weather.get(market, default_weather)
+    temp = weather['temp']
+    condition = weather['condition']
     impact = "No significant impact on crop prices expected."
-    if condition == "Light Rain" and random.random() > 0.5:
-        impact = "Recent light rain is favorable for sowing, potentially stabilizing prices."
-    if temp > 35:
+    if condition in ["Rainy", "Light Rain"] and temp < 35:
+        impact = "Rain is favorable for sowing, potentially stabilizing prices."
+    elif condition == "Sunny" and temp > 35:
         impact = "High temperatures may stress crops, potentially leading to a slight price increase if sustained."
+    elif condition == "Humid":
+        impact = "High humidity may affect crop growth, monitor for fungal diseases."
     return {'market': market, 'temp': temp, 'condition': condition, 'impact': impact}
 
 def get_crop_recommendation(soil, rainfall, ph, temp):
     """Placeholder for a crop recommendation engine."""
+    try:
+        rainfall = float(rainfall)
+    except (TypeError, ValueError):
+        rainfall = 0
+    try:
+        temp = float(temp)
+    except (TypeError, ValueError):
+        temp = 0
+    try:
+        ph = float(ph)
+    except (TypeError, ValueError):
+        ph = 0
     crop, reason = "Wheat", "Conditions are generally suitable for wheat cultivation."
     if soil == 'Black' and rainfall > 1200:
         crop, reason = "Cotton", "Black soil and high rainfall are ideal for cotton."
@@ -183,15 +207,28 @@ def handle_news():
 def handle_chat():
     """Handles chatbot requests by proxying to the Gemini API."""
     user_query = request.json.get("query")
-    if not gemini_api_key:
-        return jsonify({"response": "API Key is not configured on the server. Please set GEMINI_API_KEY in your environment."}), 400
+    api_key_from_user = request.json.get("apiKey")
+    
+    # Use the key from the user if provided, otherwise use the server's key
+    key_to_use = api_key_from_user if api_key_from_user else gemini_api_key
+    
+    if not key_to_use:
+        return jsonify({"response": "API Key is not configured on the server, and none was provided. Please enter your Gemini API Key in the settings."}), 400
 
     try:
-        # Always use the server-side API key
-        genai.configure(api_key=gemini_api_key)
+        # Re-configure if a user-specific key is provided
+        if api_key_from_user:
+            genai.configure(api_key=api_key_from_user)
+
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"You are an agricultural expert bot named AgriBERT. Answer the following user query about Indian agriculture in a concise and helpful way: \"{user_query}\""
+        
         chat_response = model.generate_content(prompt)
+        
+        # Reset to server key if it was temporarily changed
+        if api_key_from_user and gemini_api_key:
+             genai.configure(api_key=gemini_api_key)
+
         return jsonify({"response": chat_response.text})
     except Exception as e:
         print(f"Error during Gemini API call: {e}")
