@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroBert: Agri Price Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* All your original CSS styles go here... */
+        /* Custom styles for a cleaner look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff; /* Lighter blue background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .dashboard-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 1600px; /* Wider container */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 1rem 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 1.5rem;
+            border-top-right-radius: 1.5rem;
+        }
+        nav a {
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        nav a:hover:not(.disabled) {
+            background-color: #1c337d;
+        }
+        nav a.active {
+            background-color: #3b82f6;
+            font-weight: 700;
+        }
+        .main-content-area {
+            display: flex;
+            flex-direction: column;
+            padding: 2.5rem;
+            gap: 2.5rem;
+        }
+        @media (min-width: 1024px) {
+            .main-content-area {
+                flex-direction: row;
+            }
+        }
+        .dashboard-main-content {
+            flex: 2.5;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+        .chatbot-sidebar {
+            flex: 1;
+            background-color: #f0f9ff;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+        .section-header {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            padding: 1.5rem;
+            transition: all 0.3s ease-in-out;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            color: #1f2937;
+            background-color: #f9fafb;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        .action-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 600;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .action-button:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+        .action-button:active { transform: translateY(0); }
+        .result-box {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: #1e40af;
+            font-weight: 500;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        .info-box {
+            background-color: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: #065f46;
+            font-weight: 500;
+        }
+        .metric-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            background-color: #fdfefe;
+        }
+        .metric-value {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .metric-label {
+            font-size: 1rem;
+            color: #4b5563;
+        }
+        .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .positive-trend { color: #10b981; }
+        .negative-trend { color: #ef4444; }
+        .neutral-trend { color: #3b82f6; }
+
+        .quick-action-button {
+            background-color: #60a5fa;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .quick-action-button:hover {
+            background-color: #3b82f6;
+            transform: translateY(-1px);
+        }
+        .chatbot-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .message-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #2563eb;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .bot-message {
+            align-self: flex-start;
+            background-color: #e0e7ff;
+            color: #1e3a8a;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .chatbot-suggestion-button {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            padding: 0.5rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .chatbot-suggestion-button:hover {
+            background-color: #bfdbfe;
+        }
+        
+        #heatmapContainer {
+            width: 100%;
+            height: 450px;
+            position: relative;
+        }
+        .state {
+            stroke: #fff;
+            stroke-width: 0.5px;
+            transition: fill 0.3s;
+        }
+        .state:hover { fill-opacity: 0.7; }
+        #tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
+        }
+        #heatmapLegend {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 10px;
+        }
+        .content-section.hidden { display: none; }
+        .collapsible-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding: 0 1.5rem;
+        }
+        .collapsible-section.show {
+            max-height: 500px; /* Adjust as needed */
+            padding: 1.5rem;
+        }
+        #report-generator {
+            display: none;
+            font-family: Arial, sans-serif;
+            color: #333;
+            padding: 20px;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            background-color: white;
+        }
+        #report-generator h1 { font-size: 24px; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; }
+        #report-generator h2 { font-size: 18px; color: #1e3a8a; margin-top: 20px; }
+        #report-generator table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        #report-generator th, #report-generator td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #report-generator th { background-color: #f2f2f2; }
+        #report-generator .chart-image { max-width: 100%; height: auto; margin-top: 10px; }
+        #report-news-container ul { list-style-type: disc; padding-left: 20px; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 767px) {
+            body { padding: 10px; }
+            header { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem; }
+            nav { width: 100%; display: flex; justify-content: space-around; }
+            .main-content-area { padding: 1rem; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <div class="flex items-center gap-4">
+                <i class="fas fa-leaf text-3xl"></i>
+                <h1 id="headerTitle" class="text-3xl font-extrabold">AgroBert: Agri Price Prediction</h1>
+            </div>
+            <nav id="mainNav">
+                <a href="#" id="navDashboard" class="active">Dashboard</a>
+                <a href="#" id="navAnalytics">Analytics</a>
+                <a href="#" id="navReports">Reports</a>
+                <a href="#" id="navSettings">Settings</a>
+            </nav>
+            <div id="weatherWidget" class="flex items-center gap-2 text-sm">
+                </div>
+            <div class="input-group flex items-center gap-2 w-auto">
+                <label for="languageSelect" class="sr-only">Select Language</label>
+                <select id="languageSelect" class="p-2 border rounded-md text-sm bg-blue-700 text-white">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी</option>
+                    <option value="kn">ಕನ್ನಡ</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="main-content-area">
+            <div id="dashboardContent" class="dashboard-main-content content-section">
+                <p id="appDescription" class="text-center text-gray-600 -mt-4 mb-4 text-lg">
+                    Advanced Agri-Product Price Prediction using ML and sentiment analysis.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="metric-card">
+                        <i class="fas fa-chart-line metric-icon text-blue-500"></i>
+                        <div id="cropYieldForecast" class="metric-value positive-trend">12.3% <i class="fas fa-arrow-up text-green-500 text-base ml-2"></i></div>
+                        <div id="cropYieldLabel" class="metric-label">Crop Yield Forecast</div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-rupee-sign metric-icon text-green-500"></i>
+                        <div id="avgDailyPrice" class="metric-value neutral-trend">₹ 2,458</div>
+                        <div id="avgDailyPriceLabel" class="metric-label">Predicted Price</div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-leaf metric-icon text-yellow-500"></i>
+                        <div id="marketTrend" class="metric-value">Medium</div>
+                        <div id="marketTrendLabel" class="metric-label">Overall Market Trend</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 id="historicalDataHeader" class="section-header">Historical Price Trend (Simulated)</h2>
+                    <div class="mb-4 text-gray-600">
+                        <p id="chartDescription">This chart shows simulated historical and predicted price trends for the selected commodity.</p>
+                    </div>
+                    <div class="chart-container" style="height:350px;">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 id="quickActionsHeader" class="section-header">Analysis Tools</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button id="quickPredictPrice" class="quick-action-button">
+                            <i class="fas fa-chart-bar"></i> <span id="quickPredictPriceText">Price Prediction</span>
+                        </button>
+                        <button id="quickAnalyzeSentiment" class="quick-action-button">
+                            <i class="fas fa-comment-alt"></i> <span id="quickAnalyzeSentimentText">Analyze News</span>
+                        </button>
+                        <button id="quickRegionalAnalysis" class="quick-action-button">
+                            <i class="fas fa-map-marker-alt"></i> <span id="quickRegionalAnalysisText">Regional Analysis</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="pricePredictionSection" class="collapsible-section">
+                    <div class="card">
+                        <h2 id="pricePredictionHeader" class="section-header">Price Prediction (Simulated)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="input-group">
+                                <label id="commodityLabel" for="commodity">Commodity</label>
+                                <select id="commodity" class="w-full">
+                                    <option value="Apple">Apple</option>
+                                    <option value="Arecanut">Arecanut</option>
+                                    <option value="Bajra">Bajra</option>
+                                    <option value="Banana">Banana</option>
+                                    <option value="Barley">Barley</option>
+                                    <option value="Beans">Beans</option>
+                                    <option value="Black Pepper">Black Pepper</option>
+                                    <option value="Brinjal">Brinjal</option>
+                                    <option value="Cabbage">Cabbage</option>
+                                    <option value="Cardamom">Cardamom</option>
+                                    <option value="Castor">Castor</option>
+                                    <option value="Cauliflower">Cauliflower</option>
+                                    <option value="Chickpea">Chickpea</option>
+                                    <option value="Chilli">Chilli</option>
+                                    <option value="Clove">Clove</option>
+                                    <option value="Coconut">Coconut</option>
+                                    <option value="Coffee">Coffee</option>
+                                    <option value="Coriander">Coriander</option>
+                                    <option value="Cotton">Cotton</option>
+                                    <option value="Cumin">Cumin</option>
+                                    <option value="Fenugreek">Fenugreek</option>
+                                    <option value="Garlic">Garlic</option>
+                                    <option value="Ginger">Ginger</option>
+                                    <option value="Gram">Gram</option>
+                                    <option value="Grapes">Grapes</option>
+                                    <option value="Groundnut">Groundnut</option>
+                                    <option value="Jowar">Jowar</option>
+                                    <option value="Jute">Jute</option>
+                                    <option value="Lemon">Lemon</option>
+                                    <option value="Lentil">Lentil</option>
+                                    <option value="Linseed">Linseed</option>
+                                    <option value="Maize">Maize</option>
+                                    <option value="Mango">Mango</option>
+                                    <option value="Masoor Dal">Masoor Dal</option>
+                                    <option value="Moong Dal">Moong Dal</option>
+                                    <option value="Mustard">Mustard</option>
+                                    <option value="Niger">Niger</option>
+                                    <option value="Okra">Okra</option>
+                                    <option value="Onion">Onion</option>
+                                    <option value="Orange">Orange</option>
+                                    <option value="Peas">Peas</option>
+                                    <option value="Pomegranate">Pomegranate</option>
+                                    <option value="Potato">Potato</option>
+                                    <option value="Ragi">Ragi</option>
+                                    <option value="Rice">Rice</option>
+                                    <option value="Rubber">Rubber</option>
+                                    <option value="Safflower">Safflower</option>
+                                    <option value="Sesame">Sesame</option>
+                                    <option value="Soybean">Soybean</option>
+                                    <option value="Sugarcane">Sugarcane</option>
+                                    <option value="Sunflower">Sunflower</option>
+                                    <option value="Tea">Tea</option>
+                                    <option value="Tomato">Tomato</option>
+                                    <option value="Toor Dal">Toor Dal</option>
+                                    <option value="Turmeric">Turmeric</option>
+                                    <option value="Urad Dal">Urad Dal</option>
+                                    <option value="Wheat" selected>Wheat</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label id="marketLabel" for="market">Market</label>
+                                <select id="market" class="w-full">
+                                    <option value="Agra">Agra</option>
+                                    <option value="Ahmedabad">Ahmedabad</option>
+                                    <option value="Ahmednagar">Ahmednagar</option>
+                                    <option value="Aizawl">Aizawl</option>
+                                    <option value="Ajmer">Ajmer</option>
+                                    <option value="Akola">Akola</option>
+                                    <option value="Alappuzha">Alappuzha</option>
+                                    <option value="Aligarh">Aligarh</option>
+                                    <option value="Allahabad">Allahabad</option>
+                                    <option value="Alwar">Alwar</option>
+                                    <option value="Ambala">Ambala</option>
+                                    <option value="Amravati">Amravati</option>
+                                    <option value="Amritsar">Amritsar</option>
+                                    <option value="Anantapur">Anantapur</option>
+                                    <option value="Angul">Angul</option>
+                                    <option value="Aurangabad">Aurangabad</option>
+                                    <option value="Bagalkot">Bagalkot</option>
+                                    <option value="Baharampur">Baharampur</option>
+                                    <option value="Bahraich">Bahraich</option>
+                                    <option value="Balaghat">Balaghat</option>
+                                    <option value="Balasore">Balasore</option>
+                                    <option value="Ballari">Ballari</option>
+                                    <option value="Banda">Banda</option>
+                                    <option value="Bangalore">Bengaluru</option>
+                                    <option value="Bankura">Bankura</option>
+                                    <option value="Bareilly">Bareilly</option>
+                                    <option value="Barmer">Barmer</option>
+                                    <option value="Bathinda">Bathinda</option>
+                                    <option value="Beed">Beed</option>
+                                    <option value="Belagavi">Belagavi</option>
+                                    <option value="Berhampur">Berhampur</option>
+                                    <option value="Betul">Betul</option>
+                                    <option value="Bhagalpur">Bhagalpur</option>
+                                    <option value="Bharatpur">Bharatpur</option>
+                                    <option value="Bhavnagar">Bhavnagar</option>
+                                    <option value="Bhilwara">Bhilwara</option>
+                                    <option value="Bhopal">Bhopal</option>
+                                    <option value="Bidar">Bidar</option>
+                                    <option value="Bijapur">Vijayapura</option>
+                                    <option value="Bikaner">Bikaner</option>
+                                    <option value="Bilaspur">Bilaspur</option>
+                                    <option value="Bokaro">Bokaro</option>
+                                    <option value="Buldhana">Buldhana</option>
+                                    <option value="Bundi">Bundi</option>
+                                    <option value="Cachar">Cachar</option>
+                                    <option value="Chamarajanagar">Chamarajanagar</option>
+                                    <option value="Chandigarh">Chandigarh</option>
+                                    <option value="Chhatarpur">Chhatarpur</option>
+                                    <option value="Chennai">Chennai</option>
+                                    <option value="Chhindwara">Chhindwara</option>
+                                    <option value="Chittoor">Chittoor</option>
+                                    <option value="Chitradurga">Chitradurga</option>
+                                    <option value="Coimbatore">Coimbatore</option>
+                                    <option value="Cooch Behar">Cooch Behar</option>
+                                    <option value="Cuddalore">Cuddalore</option>
+                                    <option value="Cuttack">Cuttack</option>
+                                    <option value="Dahod">Dahod</option>
+                                    <option value="Dakshina Kannada">Dakshina Kannada</option>
+                                    <option value="Darbhanga">Darbhanga</option>
+                                    <option value="Davangere">Davangere</option>
+                                    <option value="Dehradun">Dehradun</option>
+                                    <option value="Delhi" selected>Delhi</option>
+                                    <option value="Deoghar">Deoghar</option>
+                                    <option value="Dewas">Dewas</option>
+                                    <option value="Dhanbad">Dhanbad</option>
+                                    <option value="Dhar">Dhar</option>
+                                    <option value="Dharmapuri">Dharmapuri</option>
+                                    <option value="Dhemaji">Dhemaji</option>
+                                    <option value="Dhule">Dhule</option>
+                                    <option value="Dibrugarh">Dibrugarh</option>
+                                    <option value="Dindigul">Dindigul</option>
+                                    <option value="East Godavari">East Godavari</option>
+                                    <option value="Ernakulam">Ernakulam</option>
+                                    <option value="Erode">Erode</option>
+                                    <option value="Faridabad">Faridabad</option>
+                                    <option value="Fatehpur">Fatehpur</option>
+                                    <option value="Firozabad">Firozabad</option>
+                                    <option value="Gadag">Gadag</option>
+                                    <option value="Gandhinagar">Gandhinagar</option>
+                                    <option value="Gaya">Gaya</option>
+                                    <option value="Ghaziabad">Ghaziabad</option>
+                                    <option value="Ghazipur">Ghazipur</option>
+                                    <option value="Goa">Goa</option>
+                                    <option value="Goalpara">Goalpara</option>
+                                    <option value="Gonda">Gonda</option>
+                                    <option value="Gorakhpur">Gorakhpur</option>
+                                    <option value="Gulbarga">Kalaburagi</option>
+                                    <option value="Guntur">Guntur</option>
+                                    <option value="Gurugram">Gurugram</option>
+                                    <option value="Guwahati">Guwahati</option>
+                                    <option value="Gwalior">Gwalior</option>
+                                    <option value="Haldia">Haldia</option>
+                                    <option value="Hamirpur">Hamirpur</option>
+                                    <option value="Hanumangarh">Hanumangarh</option>
+                                    <option value="Hapur">Hapur</option>
+                                    <option value="Haridwar">Haridwar</option>
+                                    <option value="Hassan">Hassan</option>
+                                    <option value="Hathras">Hathras</option>
+                                    <option value="Hazaribagh">Hazaribagh</option>
+                                    <option value="Hingoli">Hingoli</option>
+                                    <option value="Hisar">Hisar</option>
+                                    <option value="Hooghly">Hooghly</option>
+                                    <option value="Hoshangabad">Hoshangabad</option>
+                                    <option value="Howrah">Howrah</option>
+                                    <option value="Hubli">Hubli</option>
+                                    <option value="Hyderabad">Hyderabad</option>
+                                    <option value="Imphal">Imphal</option>
+                                    <option value="Indore">Indore</option>
+                                    <option value="Jabalpur">Jabalpur</option>
+                                    <option value="Jagatsinghpur">Jagatsinghpur</option>
+                                    <option value="Jaipur">Jaipur</option>
+                                    <option value="Jaisalmer">Jaisalmer</option>
+                                    <option value="Jalandhar">Jalandhar</option>
+                                    <option value="Jalgaon">Jalgaon</option>
+                                    <option value="Jalna">Jalna</option>
+                                    <option value="Jammu">Jammu</option>
+                                    <option value="Jamnagar">Jamnagar</option>
+                                    <option value="Jamshedpur">Jamshedpur</option>
+                                    <option value="Jaunpur">Jaunpur</option>
+                                    <option value="Jhansi">Jhansi</option>
+                                    <option value="Jodhpur">Jodhpur</option>
+                                    <option value="Jorhat">Jorhat</option>
+                                    <option value="Junagadh">Junagadh</option>
+                                    <option value="Kadapa">YSR Kadapa</option>
+                                    <option value="Kakinada">Kakinada</option>
+                                    <option value="Kanchipuram">Kanchipuram</option>
+                                    <option value="Kandhamal">Kandhamal</option>
+                                    <option value="Kangra">Kangra</option>
+                                    <option value="Kannauj">Kannauj</option>
+                                    <option value="Kannur">Kannur</option>
+                                    <option value="Kanpur">Kanpur Nagar</option>
+                                    <option value="Karaikal">Karaikal</option>
+                                    <option value="Kargil">Kargil</option>
+                                    <option value="Karimnagar">Karimnagar</option>
+                                    <option value="Karnal">Karnal</option>
+                                    <option value="Kasaragod">Kasaragod</option>
+                                    <option value="Katihar">Katihar</option>
+                                    <option value="Kochi">Kochi</option>
+                                    <option value="Kodagu">Kodagu</option>
+                                    <option value="Kolar">Kolar</option>
+                                    <option value="Kolhapur">Kolhapur</option>
+                                    <option value="Kollam">Kollam</option>
+                                    <option value="Kolkata">Kolkata</option>
+                                    <option value="Koppal">Koppal</option>
+                                    <option value="Koraput">Koraput</option>
+                                    <option value="Kota">Kota</option>
+                                    <option value="Kottayam">Kottayam</option>
+                                    <option value="Kozhikode">Kozhikode</option>
+                                    <option value="Krishna">Krishna</option>
+                                    <option value="Kullu">Kullu</option>
+                                    <option value="Kurnool">Kurnool</option>
+                                    <option value="Kurukshetra">Kurukshetra</option>
+                                    <option value="Lakhimpur">Lakhimpur</option>
+                                    <option value="Latur">Latur</option>
+                                    <option value="Leh">Leh</option>
+                                    <option value="Lucknow">Lucknow</option>
+                                    <option value="Ludhiana">Ludhiana</option>
+                                    <option value="Madurai">Madurai</option>
+                                    <option value="Mahabubnagar">Mahabubnagar</option>
+                                    <option value="Malappuram">Malappuram</option>
+                                    <option value="Mandi">Mandi</option>
+                                    <option value="Mangalore">Mangalore</option>
+                                    <option value="Mansa">Mansa</option>
+                                    <option value="Mathura">Mathura</option>
+                                    <option value="Meerut">Meerut</option>
+                                    <option value="Moga">Moga</option>
+                                    <option value="Mohali">Sahibzada Ajit Singh Nagar</option>
+                                    <option value="Mokokchung">Mokokchung</option>
+                                    <option value="Moradabad">Moradabad</option>
+                                    <option value="Mumbai">Mumbai</option>
+                                    <option value="Murshidabad">Murshidabad</option>
+                                    <option value="Mysuru">Mysuru</option>
+                                    <option value="Nadia">Nadia</option>
+                                    <option value="Nagapattinam">Nagapattinam</option>
+                                    <option value="Nagpur">Nagpur</option>
+                                    <option value="Nainital">Nainital</option>
+                                    <option value="Nalgonda">Nalgonda</option>
+                                    <option value="Namakkal">Namakkal</option>
+                                    <option value="Nanded">Nanded</option>
+                                    <option value="Nashik">Nashik</option>
+                                    <option value="Nellore">Nellore</option>
+                                    <option value="New Delhi">New Delhi</option>
+                                    <option value="Nizamabad">Nizamabad</option>
+                                    <option value="Ongole">Ongole</option>
+                                    <option value="Palakkad">Palakkad</option>
+                                    <option value="Pali">Pali</option>
+                                    <option value="Palwal">Palwal</option>
+                                    <option value="Panchkula">Panchkula</option>
+                                    <option value="Panipat">Panipat</option>
+                                    <option value="Patan">Patan</option>
+                                    <option value="Patiala">Patiala</option>
+                                    <option value="Patna">Patna</option>
+                                    <option value="Pauri Garhwal">Pauri Garhwal</option>
+                                    <option value="Perambalur">Perambalur</option>
+                                    <option value="Phek">Phek</option>
+                                    <option value="Pilibhit">Pilibhit</option>
+                                    <option value="Pithoragarh">Pithoragarh</option>
+                                    <option value="Pondicherry">Puducherry</option>
+                                    <option value="Port Blair">Port Blair</option>
+                                    <option value="Prakasam">Prakasam</option>
+                                    <option value="Pratapgarh">Pratapgarh</option>
+                                    <option value="Pune">Pune</option>
+                                    <option value="Puri">Puri</option>
+                                    <option value="Purnia">Purnia</option>
+                                    <option value="Raichur">Raichur</option>
+                                    <option value="Raigad">Raigad</option>
+                                    <option value="Raipur">Raipur</option>
+                                    <option value="Rajkot">Rajkot</option>
+                                    <option value="Ramanathapuram">Ramanathapuram</option>
+                                    <option value="Rampur">Rampur</option>
+                                    <option value="Ranchi">Ranchi</option>
+                                    <option value="Ranga Reddy">Ranga Reddy</option>
+                                    <option value="Ratlam">Ratlam</option>
+                                    <option value="Ratnagiri">Ratnagiri</option>
+                                    <option value="Rewa">Rewa</option>
+                                    <option value="Rohtak">Rohtak</option>
+                                    <option value="Rupnagar">Rupnagar</option>
+                                    <option value="Sagar">Sagar</option>
+                                    <option value="Saharanpur">Saharanpur</option>
+                                    <option value="Salem">Salem</option>
+                                    <option value="Sambalpur">Sambalpur</option>
+                                    <option value="Sangli">Sangli</option>
+                                    <option value="Sangrur">Sangrur</option>
+                                    <option value="Satara">Satara</option>
+                                    <option value="Satna">Satna</option>
+                                    <option value="Sehore">Sehore</option>
+                                    <option value="Shimla">Shimla</option>
+                                    <option value="Shivamogga">Shivamogga</option>
+                                    <option value="Shivpuri">Shivpuri</option>
+                                    <option value="Sikar">Sikar</option>
+                                    <option value="Sindhudurg">Sindhudurg</option>
+                                    <option value="Sirmaur">Sirmaur</option>
+                                    <option value="Sirsa">Sirsa</option>
+                                    <option value="Sitamarhi">Sitamarhi</option>
+                                    <option value="Solan">Solan</option>
+                                    <option value="Solapur">Solapur</option>
+                                    <option value="Sonipat">Sonipat</option>
+                                    <option value="Srikakulam">Srikakulam</option>
+                                    <option value="Sultanpur">Sultanpur</option>
+                                    <option value="Surat">Surat</option>
+                                    <option value="Surendranagar">Surendranagar</option>
+                                    <option value="Thane">Thane</option>
+                                    <option value="Thanjavur">Thanjavur</option>
+                                    <option value="Theni">Theni</option>
+                                    <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                                    <option value="Thrissur">Thrissur</option>
+                                    <option value="Tinsukia">Tinsukia</option>
+                                    <option value="Tiruchirappalli">Tiruchirappalli</option>
+                                    <option value="Tirunelveli">Tirunelveli</option>
+                                    <option value="Tiruppur">Tiruppur</option>
+                                    <option value="Tiruvannamalai">Tiruvannamalai</option>
+                                    <option value="Tiruvarur">Tiruvarur</option>
+                                    <option value="Tonk">Tonk</option>
+                                    <option value="Tumakuru">Tumakuru</option>
+                                    <option value="Udaipur">Udaipur</option>
+                                    <option value="Udupi">Udupi</option>
+                                    <option value="Ujjain">Ujjain</option>
+                                    <option value="Una">Una</option>
+                                    <option value="Vadodara">Vadodara</option>
+                                    <option value="Valsad">Valsad</option>
+                                    <option value="Varanasi">Varanasi</option>
+                                    <option value="Vellore">Vellore</option>
+                                    <option value="Viluppuram">Viluppuram</option>
+                                    <option value="Visakhapatnam">Visakhapatnam</option>
+                                    <option value="Vizianagaram">Vizianagaram</option>
+                                    <option value="Warangal">Warangal Urban</option>
+                                    <option value="Wardha">Wardha</option>
+                                    <option value="Washim">Washim</option>
+                                    <option value="West Godavari">West Godavari</option>
+                                    <option value="Yavatmal">Yavatmal</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label id="daysAheadLabel" for="daysAhead">Days Ahead</label>
+                                <input type="number" id="daysAhead" value="7" min="1" max="365" class="w-full">
+                            </div>
+                        </div>
+                        <button id="predictButton" class="action-button w-full">Predict Price</button>
+                        <div id="priceResult" class="result-box mt-4 hidden"></div>
+                    </div>
+                </div>
+
+                <div id="sentimentAnalysisSection" class="collapsible-section">
+                    <div class="card">
+                        <h2 id="sentimentAnalysisHeader" class="section-header">Sentiment Analysis (Simulated)</h2>
+                        <div class="input-group mb-6">
+                            <label id="newsTextLabel" for="newsText">Agricultural News Text</label>
+                            <textarea id="newsText" rows="4" placeholder="Enter agricultural news text here..." class="w-full">Recent heavy rains are expected to severely impact the cotton crop yield in Maharashtra, leading to potential price increases.</textarea>
+                        </div>
+                        <button id="analyzeSentimentButton" class="action-button w-full">Analyze Sentiment</button>
+                        <div id="sentimentResult" class="result-box mt-4 hidden"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2 id="cropRecommenderHeader" class="section-header">Crop Recommendation System</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="input-group">
+                            <label id="soilTypeLabel" for="soilType">Soil Type</label>
+                            <select id="soilType" class="w-full">
+                                <option>Alluvial</option>
+                                <option>Black</option>
+                                <option>Red</option>
+                                <option>Laterite</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label id="rainfallLabel" for="rainfall">Annual Rainfall (mm)</label>
+                            <input type="number" id="rainfall" value="1000" class="w-full">
+                        </div>
+                        <div class="input-group">
+                            <label id="phLabel" for="phValue">Soil pH</label>
+                            <input type="number" id="phValue" value="6.5" step="0.1" class="w-full">
+                        </div>
+                        <div class="input-group">
+                            <label id="tempLabel" for="temperature">Avg. Temperature (°C)</label>
+                            <input type="number" id="temperature" value="25" class="w-full">
+                        </div>
+                    </div>
+                    <button id="recommendCropButton" class="action-button w-full">Get Recommendation</button>
+                    <div id="recommendationResult" class="result-box mt-4 hidden"></div>
+                </div>
+
+                <div class="card">
+                    <h2 id="regionalAnalysisHeader" class="section-header">Regional Crop Analysis (Simulated)</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white rounded-lg shadow-sm">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                                    <th class="py-3 px-6 text-left" id="tableHeaderRegion">Region</th>
+                                    <th class="py-3 px-6 text-left" id="tableHeaderCrop">Crop</th>
+                                    <th class="py-3 px-6 text-left" id="tableHeaderPredictedPrice">Predicted Price</th>
+                                    <th class="py-3 px-6 text-left" id="tableHeaderTrend">Trend</th>
+                                    <th class="py-3 px-6 text-left" id="tableHeaderSentiment">Sentiment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regionalAnalysisTableBody" class="text-gray-700 text-sm font-light">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 id="xaiHeader" class="section-header">Explainable AI Insights (Simulated)</h2>
+                    <div id="xaiResult" class="info-box">
+                        <p id="xaiText">Click 'Predict Price' to see factors influencing the prediction.</p>
+                    </div>
+                </div>
+
+                <div id="regionalHeatmapSection" class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="heatmapHeader" class="section-header mb-0">Regional Price Heatmap</h2>
+                        <div class="input-group w-1/3">
+                            <label for="heatmapCommodity" class="sr-only">Commodity</label>
+                            <select id="heatmapCommodity" class="w-full text-sm">
+                                <option value="Wheat">Wheat</option>
+                                <option value="Rice">Rice</option>
+                                <option value="Cotton">Cotton</option>
+                                <option value="Onion">Onion</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="heatmapContainer">
+                        <div id="heatmapLegend"></div>
+                    </div>
+                    <div id="tooltip"></div>
+                </div>
+
+                <div class="card">
+                    <h2 id="alertsHeader" class="section-header">Alerts & Recommendations (Simulated)</h2>
+                    <div id="alertsResult" class="info-box">
+                        <p id="alertsText">No new alerts or recommendations at this moment.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyticsContent" class="dashboard-main-content content-section hidden">
+                <h2 id="analyticsHeader" class="section-header">Analytics for <span id="analyticsCropName" class="text-blue-600">Wheat</span></h2>
+                <p id="analyticsDescription" class="text-gray-600 -mt-4 mb-4">Run a prediction on the dashboard to update these analytics.</p>
+                <div class="card p-6 mb-6">
+                    <h3 id="modelPerformanceHeader" class="text-xl font-semibold text-gray-800 mb-4">Model Performance Metrics (Simulated)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div class="p-4 bg-blue-50 rounded-lg shadow-sm">
+                            <p class="text-sm text-gray-600" id="accuracyLabel">Accuracy (R²)</p>
+                            <p id="accuracyValue" class="text-2xl font-bold text-blue-700 mt-1">0.92</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-lg shadow-sm">
+                            <p class="text-sm text-gray-600" id="maeLabel">MAE (Mean Absolute Error)</p>
+                            <p id="maeValue" class="text-2xl font-bold text-green-700 mt-1">₹ 45.20</p>
+                        </div>
+                        <div class="p-4 bg-red-50 rounded-lg shadow-sm">
+                            <p class="text-sm text-gray-600" id="rmseLabel">RMSE (Root Mean Squared Error)</p>
+                            <p id="rmseValue" class="text-2xl font-bold text-red-700 mt-1">₹ 68.50</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 id="featureImportanceHeader" class="text-xl font-semibold text-gray-800 mb-4">Key Price Drivers (Feature Importance)</h3>
+                        <div class="chart-container" style="height:300px;">
+                            <canvas id="featureImportanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 id="sentimentDistributionHeader" class="text-xl font-semibold text-gray-800 mb-4">News Sentiment Distribution</h3>
+                        <div class="chart-container" style="height:300px;">
+                            <canvas id="sentimentPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card p-6 mb-6">
+                    <h3 id="marketComparisonHeader" class="text-xl font-semibold text-gray-800 mb-4">Price Comparison Across Major Markets</h3>
+                    <div class="chart-container" style="height:300px;">
+                        <canvas id="marketComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card p-6 mb-6">
+                    <h3 id="weatherImpactHeader" class="text-xl font-semibold text-gray-800 mb-4">Weather Impact Analysis for <span id="weatherMarketName" class="text-blue-600">Delhi</span></h3>
+                    <div id="weatherImpactContent" class="text-gray-700">
+                        <p id="weatherImpactPlaceholder">Select a market and predict a price to see weather analysis.</p>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 id="dataQualityHeader" class="text-xl font-semibold text-gray-800 mb-4">Data Quality Monitoring (Simulated)</h3>
+                    <ul class="list-disc pl-5 text-gray-700">
+                        <li id="missingValuesItem">Missing Values: <span class="font-semibold text-green-600">Low (0.5%)</span></li>
+                        <li id="outliersItem">Outliers Detected: <span class="font-semibold text-yellow-600">Moderate (1.2%)</span></li>
+                        <li id="apiStatusItem">API Data Feeds: <span class="font-semibold text-green-600">All Operational</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="reportsContent" class="dashboard-main-content content-section hidden">
+                <h2 id="reportsHeader" class="section-header">Report Generator</h2>
+                <div class="card p-6 mb-6">
+                    <h3 id="generateReportHeader" class="text-xl font-semibold text-gray-800 mb-4">Generate Custom Report</h3>
+                    <p class="text-gray-700 mb-4" id="generateReportSummary">
+                        Generate a detailed PDF report based on the latest price prediction and analysis performed on the dashboard. Ensure you have run a prediction on the Dashboard tab first.
+                    </p>
+                    <button class="action-button bg-green-600 hover:bg-green-700" id="generateReportButton">
+                        <i class="fas fa-download"></i> <span id="generateReportButtonText">Generate & Download Report (PDF)</span>
+                    </button>
+                    <div id="reportStatus" class="mt-4"></div>
+                </div>
+            </div>
+
+            <div id="settingsContent" class="dashboard-main-content content-section hidden">
+                <h2 id="settingsHeader" class="section-header">Settings & Configuration</h2>
+                <div class="card p-6 mb-6">
+                    <h3 id="dataSourceHeader" class="text-xl font-semibold text-gray-800 mb-4">Data Source Management (Simulated)</h3>
+                    <ul class="list-disc pl-5 text-gray-700">
+                        <li id="agmarknetStatus">Agmarknet API: <span class="font-semibold text-green-600">Connected</span> (Last Sync: 2 mins ago)</li>
+                        <li id="openWeatherStatus">OpenWeather API: <span class="font-semibold text-green-600">Connected</span> (Last Sync: 5 mins ago)</li>
+                        <li id="faostatStatus">FAOSTAT Data: <span class="font-semibold text-yellow-600">Partially Synced</span> (Needs update)</li>
+                        <li id="newsScraperStatus">News Scrapers: <span class="font-semibold text-green-600">Active</span> (Last run: 1 min ago)</li>
+                    </ul>
+                    <button class="action-button mt-4 bg-blue-600 hover:bg-blue-700" id="syncDataButton">
+                        <i class="fas fa-sync-alt"></i> <span id="syncDataButtonText">Sync All Data Now</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chatbot-sidebar">
+                <h2 id="chatbotHeader" class="section-header text-center">AgriBERT Chatbot</h2>
+                <div class="chatbot-messages" id="chatbotMessages">
+                    <div class="message-bubble bot-message">
+                        <p id="chatWelcomeMessage">Hello! I'm AgriBERT. How can I help you?</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 my-2" id="chatbotSuggestions">
+                    </div>
+                <div class="input-group flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Ask a question..." class="flex-grow">
+                    <button id="sendChatButton" class="action-button px-4 py-2">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button id="voiceInputButton" class="action-button px-4 py-2 bg-purple-600 hover:bg-purple-700">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="report-generator">
+        <h1 id="report-title"></h1>
+        <p><strong>Date Generated:</strong> <span id="report-date"></span></p>
+        <h2>Price Prediction Summary</h2>
+        <div id="report-prediction-summary"></div>
+        <h2>Historical & Predicted Price Chart</h2>
+        <div id="report-chart-container"></div>
+        <h2>Key Influencing Factors (XAI)</h2>
+        <div id="report-xai-container"></div>
+        <h2>Regional Analysis Snapshot</h2>
+        <div id="report-table-container"></div>
+        <h2>Latest News Updates</h2>
+        <div id="report-news-container"></div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // --- GLOBAL STATE ---
+            let dashboardState = {
+                commodity: 'Wheat',
+                market: 'Delhi',
+                prediction: null,
+                xai: null,
+                chartData: null,
+                weatherData: null,
+            };
+            // --- ELEMENT SELECTORS ---
+            const languageSelect = document.getElementById('languageSelect');
+            const commodityInput = document.getElementById('commodity');
+            const marketInput = document.getElementById('market');
+            const daysAheadInput = document.getElementById('daysAhead');
+            const predictButton = document.getElementById('predictButton');
+            const analyzeSentimentButton = document.getElementById('analyzeSentimentButton');
+            const recommendCropButton = document.getElementById('recommendCropButton');
+            const priceResultDiv = document.getElementById('priceResult');
+            const sentimentResultDiv = document.getElementById('sentimentResult');
+            const recommendationResult = document.getElementById('recommendationResult');
+            const xaiResultDiv = document.getElementById('xaiResult');
+            const alertsResultDiv = document.getElementById('alertsResult');
+            const regionalAnalysisTableBody = document.getElementById('regionalAnalysisTableBody');
+            const chatbotMessagesDiv = document.getElementById('chatbotMessages');
+            const chatInput = document.getElementById('chatInput');
+            const sendChatButton = document.getElementById('sendChatButton');
+            const voiceInputButton = document.getElementById('voiceInputButton');
+            const geminiApiKeyInput = document.getElementById('geminiApiKey');
+            const weatherWidget = document.getElementById('weatherWidget');
+            // Sections
+            const pricePredictionSection = document.getElementById('pricePredictionSection');
+            const sentimentAnalysisSection = document.getElementById('sentimentAnalysisSection');
+            
+            // Navigation
+            const allNavLinks = document.querySelectorAll('#mainNav a');
+            const allContentSections = document.querySelectorAll('.dashboard-main-content.content-section');
+            
+            // Analytics Elements
+            let featureImportanceChartInstance = null;
+            let sentimentPieChartInstance = null;
+            let marketComparisonChartInstance = null;
+            
+            // Heatmap
+            const heatmapCommoditySelect = document.getElementById('heatmapCommodity');
+            // Reports
+            const generateReportButton = document.getElementById('generateReportButton');
+            const reportStatusDiv = document.getElementById('reportStatus');
+            
+            // Define the base URL for your Flask backend
+            const API_BASE_URL = 'http://127.0.0.1:5000';
+
+            // --- TRANSLATIONS (SAME AS ORIGINAL) ---
+            const translations = {
+                en: {
+                    // Headers & Nav
+                    headerTitle: "AgroBert: Agri Price Prediction",
+                    navDashboard: "Dashboard", navAnalytics: "Analytics", navReports: "Reports", navSettings: "Settings",
+                    appDescription: "Advanced Agri-Product Price Prediction using ML and sentiment analysis.",
+                    // Metric Cards
+                    cropYieldLabel: "Crop Yield Forecast", avgDailyPriceLabel: "Predicted Price", marketTrendLabel: "Overall Market Trend",
+                    // Main Chart
+                    historicalDataHeader: "Historical Price Trend",
+                    chartDescription: "This chart shows historical and predicted price trends for the selected commodity.",
+                    // Quick Actions
+                    quickActionsHeader: "Analysis Tools", quickPredictPriceText: "Price Prediction", quickAnalyzeSentimentText: "Analyze News", quickRegionalAnalysisText: "Regional Analysis",
+                    // Price Prediction
+                    pricePredictionHeader: "Price Prediction", commodityLabel: "Commodity", marketLabel: "Market", daysAheadLabel: "Days Ahead",
+                    predictButton: "Predict Price",
+                    // Sentiment Analysis
+                    sentimentAnalysisHeader: "Sentiment Analysis", newsTextLabel: "Agricultural News Text", analyzeSentimentButton: "Analyze Sentiment",
+                    // Crop Recommender
+                    cropRecommenderHeader: "Crop Recommendation System", soilTypeLabel: "Soil Type", rainfallLabel: "Annual Rainfall (mm)",
+                    phLabel: "Soil pH", tempLabel: "Avg. Temperature (°C)", recommendCropButton: "Get Recommendation",
+                    // Regional Analysis Table
+                    regionalAnalysisHeader: "Regional Crop Analysis", tableHeaderRegion: "Region", tableHeaderCrop: "Crop", tableHeaderPredictedPrice: "Predicted Price", tableHeaderTrend: "Trend", tableHeaderSentiment: "Sentiment",
+                    // XAI & Alerts
+                    xaiHeader: "Explainable AI Insights", xaiText: "Click 'Predict Price' to see factors influencing the prediction.",
+                    heatmapHeader: "Regional Price Heatmap", alertsHeader: "Alerts & Recommendations", alertsText: "No new alerts or recommendations at this moment.",
+                    // Analytics Page
+                    analyticsHeader: "Analytics for", analyticsDescription: "Run a prediction on the dashboard to update these analytics.",
+                    modelPerformanceHeader: "Model Performance Metrics", accuracyLabel: "Accuracy (R²)", maeLabel: "MAE (Mean Absolute Error)", rmseLabel: "RMSE (Root Mean Squared Error)",
+                    featureImportanceHeader: "Key Price Drivers (Feature Importance)", sentimentDistributionHeader: "News Sentiment Distribution", marketComparisonHeader: "Price Comparison Across Major Markets",
+                    weatherImpactHeader: "Weather Impact Analysis for", weatherImpactPlaceholder: "Select a market and predict a price to see weather analysis.", dataQualityHeader: "Data Quality Monitoring",
+                    // Reports Page
+                    reportsHeader: "Report Generator", generateReportHeader: "Generate Custom Report", generateReportSummary: "Generate a detailed PDF report based on the latest price prediction and analysis performed on the dashboard. Ensure you have run a prediction on the Dashboard tab first.",
+                    generateReportButtonText: "Generate & Download Report (PDF)",
+                    // Settings Page
+                    settingsHeader: "Settings & Configuration", dataSourceHeader: "Data Source Management", syncDataButtonText: "Sync All Data Now",
+                    // Chatbot
+                    chatbotHeader: "AgriBERT Chatbot", geminiApiKeyLabel: "Gemini API Key (Optional)", chatWelcomeMessage: "Hello! I'm AgriBERT. How can I help you?",
+                    // Dynamic Text
+                    pricePredictionResultLoading: '<span class="loading-spinner"></span> Predicting...',
+                    predictedFor: (commodity, market, days) => `Predicted Modal Price for <strong>${commodity}</strong> in <strong>${market}</strong> in ${days} days:`,
+                    unit: 'INR/Quintal',
+                    sentimentAnalysisResultLoading: '<span class="loading-spinner"></span> Analyzing sentiment...',
+                    sentimentResultText: (sentiment, score) => `Detected Sentiment: <strong>${sentiment}</strong> (Score: ${score.toFixed(2)})`,
+                    xaiFactors: (factors) => `<p class="font-bold">Key influencing factors:</p><ul class="list-disc pl-5 mt-2 text-sm">${factors.map(f => `<li class="${f.impact === 'Positive' ? 'text-green-700' : f.impact === 'Negative' ? 'text-red-700' : 'text-gray-700'}">${f.factor} (${f.impact} impact)</li>`).join('')}</ul>`,
+                    weatherImpactText: (market, temp, condition, impact) => `<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>Current conditions in ${market}:</strong> ${temp}°C, ${condition}.</p><p class="mt-2"><strong>Impact Analysis:</strong> ${impact}</p></div></div>`,
+                    reportGenerating: '<span class="loading-spinner"></span> Generating report...',
+                    reportGenerated: '✅ Report generated successfully! Download has started.',
+                    reportError: '❌ Error generating report. Please ensure a prediction has been made.',
+                    chatSuggestions: ["Price of Wheat in Punjab?", "Impact of monsoon on Rice?", "Recommend a crop for my area."],
+                    cropRecommendationLoading: '<span class="loading-spinner"></span> Finding the best crop...',
+                    cropRecommendationResult: (crop, reason) => `<p><strong>Recommended Crop:</strong> <span class="text-green-700 font-bold">${crop}</span></p><p class="text-sm mt-1">${reason}</p>`,
+                    weather: {"Clear": "Clear", "Partly Cloudy": "Partly Cloudy", "Light Rain": "Light Rain", "Sunny": "Sunny"}
+                },
+                hi: {
+                    headerTitle: "एग्रोबर्ट: कृषि मूल्य भविष्यवाणी", navDashboard: "डैशबोर्ड", navAnalytics: "विश्लेषिकी", navReports: "रिपोर्ट", navSettings: "सेटिंग्स",
+                    appDescription: "एमएल और भावना विश्लेषण का उपयोग करके उन्नत कृषि-उत्पाद मूल्य भविष्यवाणी।", cropYieldLabel: "फसल उपज का पूर्वानुमान", avgDailyPriceLabel: "अनुमानित मूल्य",
+                    marketTrendLabel: "समग्र बाजार की प्रवृत्ति", historicalDataHeader: "ऐतिहासिक मूल्य प्रवृत्ति", chartDescription: "यह चार्ट चयनित वस्तु के लिए ऐतिहासिक और अनुमानित मूल्य प्रवृत्तियों को दर्शाता है।",
+                    quickActionsHeader: "विश्लेषण उपकरण", quickPredictPriceText: "मूल्य भविष्यवाणी", quickAnalyzeSentimentText: "समाचारों का विश्लेषण करें", quickRegionalAnalysisText: "क्षेत्रीय विश्लेषण",
+                    pricePredictionHeader: "मूल्य भविष्यवाणी", commodityLabel: "वस्तु", marketLabel: "बाजार", daysAheadLabel: "आगे के दिन", predictButton: "मूल्य का अनुमान लगाएं",
+                    sentimentAnalysisHeader: "भावना विश्लेषण", newsTextLabel: "कृषि समाचार पाठ", analyzeSentimentButton: "भावना का विश्लेषण करें", cropRecommenderHeader: "फसल सिफारिश प्रणाली",
+                    soilTypeLabel: "मिट्टी का प्रकार", rainfallLabel: "वार्षिक वर्षा (मिमी)", phLabel: "मिट्टी का पीएच", tempLabel: "औसत तापमान (°C)", recommendCropButton: "सिफारिश प्राप्त करें",
+                    regionalAnalysisHeader: "क्षेत्रीय फसल विश्लेषण", tableHeaderRegion: "क्षेत्र", tableHeaderCrop: "फसल", tableHeaderPredictedPrice: "अनुमानित मूल्य", tableHeaderTrend: "प्रवृत्ति", tableHeaderSentiment: "भावना",
+                    xaiHeader: "व्याख्या करने योग्य AI अंतर्दृष्टि", xaiText: "भविष्यवाणी को प्रभावित करने वाले कारकों को देखने के लिए 'मूल्य का अनुमान लगाएं' पर क्लिक करें।",
+                    heatmapHeader: "क्षेत्रीय मूल्य हीटमैप", alertsHeader: "अलर्ट और सिफारिशें", alertsText: "इस समय कोई नया अलर्ट या सिफारिशें नहीं हैं।",
+                    analyticsHeader: "के लिए विश्लेषिकी", analyticsDescription: "इन विश्लेषणों को अद्यतन करने के लिए डैशबोर्ड पर एक भविष्यवाणी चलाएँ।", modelPerformanceHeader: "मॉडल प्रदर्शन मेट्रिक्स",
+                    accuracyLabel: "सटीकता (R²)", maeLabel: "MAE (माध्य निरपेक्ष त्रुटि)", rmseLabel: "RMSE (रूट माध्य वर्ग त्रुटि)", featureImportanceHeader: "मुख्य मूल्य चालक (सुविधा महत्व)",
+                    sentimentDistributionHeader: "समाचार भावना वितरण", marketComparisonHeader: "प्रमुख बाजारों में मूल्य तुलना", weatherImpactHeader: "के लिए मौसम प्रभाव विश्लेषण",
+                    weatherImpactPlaceholder: "मौसम विश्लेषण देखने के लिए एक बाजार चुनें और मूल्य की भविष्यवाणी करें।", dataQualityHeader: "डेटा गुणवत्ता निगरानी", reportsHeader: "रिपोर्ट जेनरेटर",
+                    generateReportHeader: "कस्टम रिपोर्ट बनाएं", generateReportSummary: "डैशबोर्ड पर किए गए नवीनतम मूल्य भविष्यवाणी और विश्लेषण के आधार पर एक विस्तृत पीडीएफ रिपोर्ट बनाएं। सुनिश्चित करें कि आपने पहले डैशबोर्ड टैब पर एक भविष्यवाणी चलाई है।",
+                    generateReportButtonText: "रिपोर्ट बनाएं और डाउनलोड करें (पीडीएफ)", settingsHeader: "सेटिंग्स और कॉन्फ़िगरेशन", dataSourceHeader: "डेटा स्रोत प्रबंधन", syncDataButtonText: "अब सभी डेटा सिंक करें",
+                    chatbotHeader: "एग्रीबर्ट चैटबॉट", geminiApiKeyLabel: "जेमिनी एपीआई कुंजी (वैकल्पिक)", chatWelcomeMessage: "नमस्ते! मैं एग्रीबर्ट हूँ। मैं आपकी कैसे मदद कर सकता हूँ?",
+                    pricePredictionResultLoading: '<span class="loading-spinner"></span> भविष्यवाणी हो रही है...', predictedFor: (commodity, market, days) => `<strong>${commodity}</strong> के लिए <strong>${market}</strong> में ${days} दिनों में अनुमानित मॉडल मूल्य:`,
+                    unit: 'INR/क्विंटल', sentimentAnalysisResultLoading: '<span class="loading-spinner"></span> भावना का विश्लेषण हो रहा है...',
+                    sentimentResultText: (sentiment, score) => `पता लगाई गई भावना: <strong>${sentiment}</strong> (स्कोर: ${score.toFixed(2)})`,
+                    xaiFactors: (factors) => `<p class="font-bold">प्रमुख प्रभावशाली कारक:</p><ul class="list-disc pl-5 mt-2 text-sm">${factors.map(f => `<li class="${f.impact === 'Positive' ? 'text-green-700' : f.impact === 'Negative' ? 'text-red-700' : 'text-gray-700'}">${f.factor} (${f.impact} प्रभाव)</li>`).join('')}</ul>`,
+                    weatherImpactText: (market, temp, condition, impact) => `<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>${market} में वर्तमान स्थिति:</strong> ${temp}°C, ${condition}.</p><p class="mt-2"><strong>प्रभाव विश्लेषण:</strong> ${impact}</p></div></div>`,
+                    reportGenerating: '<span class="loading-spinner"></span> रिपोर्ट तैयार हो रही है...', reportGenerated: '✅ रिपोर्ट सफलतापूर्वक तैयार हो गई! डाउनलोड शुरू हो गया है।',
+                    reportError: '❌ रिपोर्ट बनाने में त्रुटि। कृपया सुनिश्चित करें कि भविष्यवाणी की गई है।', chatSuggestions: ["पंजाब में गेहूं की कीमत?", "चावल पर मानसून का प्रभाव?", "मेरे क्षेत्र के लिए फसल की सिफारिश करें।"],
+                    cropRecommendationLoading: '<span class="loading-spinner"></span> सबसे अच्छी फसल ढूंढी जा रही है...', cropRecommendationResult: (crop, reason) => `<p><strong>अनुशंसित फसल:</strong> <span class="text-green-700 font-bold">${crop}</span></p><p class="text-sm mt-1">${reason}</p>`,
+                    weather: {"Clear": "साफ़", "Partly Cloudy": "आंशिक रूप से बादल छाए रहेंगे", "Light Rain": "हलकी बारिश", "Sunny": "धूप"}
+                },
+                kn: {
+                    headerTitle: "ಅಗ್ರೋಬರ್ಟ್: ಕೃಷಿ ಬೆಲೆ ಮುನ್ಸೂಚನೆ", navDashboard: "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್", navAnalytics: "ವಿಶ್ಲೇಷಣೆ", navReports: "ವರದಿಗಳು", navSettings: "ಸಂಯೋಜನೆಗಳು",
+                    appDescription: "ಎಂಎಲ್ ಮತ್ತು ಭಾವನೆ ವಿಶ್ಲೇಷಣೆ ಬಳಸಿ ಸುಧಾರಿತ ಕೃಷಿ-ಉತ್ಪನ್ನ ಬೆಲೆ ಮುನ್ಸೂಚನೆ.", cropYieldLabel: "ಬೆಳೆ ಇಳುವರಿ ಮುನ್ಸೂಚನೆ", avgDailyPriceLabel: "ಊಹಿಸಿದ ಬೆಲೆ",
+                    marketTrendLabel: "ಒಟ್ಟಾರೆ ಮಾರುಕಟ್ಟೆ ಪ್ರವೃತ್ತಿ", historicalDataHeader: "ಐತಿಹಾಸಿಕ ಬೆಲೆ ಪ್ರವೃತ್ತಿ", chartDescription: "ಈ ಚಾರ್ಟ್ ಆಯ್ಕೆಮಾಡಿದ ಸರಕುಗಳಿಗಾಗಿ ಐತಿಹಾಸಿಕ ಮತ್ತು ಊಹಿಸಿದ ಬೆಲೆ ಪ್ರವೃತ್ತಿಗಳನ್ನು ತೋರಿಸುತ್ತದೆ.",
+                    quickActionsHeader: "ವಿಶ್ಲೇಷಣೆ ಪರಿಕರಗಳು", quickPredictPriceText: "ಬೆಲೆ ಮುನ್ಸೂಚನೆ", quickAnalyzeSentimentText: "ಸುದ್ದಿ ವಿಶ್ಲೇಷಿಸಿ", quickRegionalAnalysisText: "ಪ್ರಾದೇಶಿಕ ವಿಶ್ಲೇಷಣೆ",
+                    pricePredictionHeader: "ಬೆಲೆ ಮುನ್ಸೂಚನೆ", commodityLabel: "ಸರಕು", marketLabel: "ಮಾರುಕಟ್ಟೆ", daysAheadLabel: "ಮುಂದಿನ ದಿನಗಳು", predictButton: "ಬೆಲೆ ಊಹಿಸಿ",
+                    sentimentAnalysisHeader: "ಭಾವನೆ ವಿಶ್ಲೇಷಣೆ", newsTextLabel: "ಕೃಷಿ ಸುದ್ದಿ ಪಠ್ಯ", analyzeSentimentButton: "ಭಾವನೆ ವಿಶ್ಲೇಷಿಸಿ", cropRecommenderHeader: "ಬೆಳೆ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",
+                    soilTypeLabel: "ಮಣ್ಣಿನ ಪ್ರಕಾರ", rainfallLabel: "ವಾರ್ಷಿಕ ಮಳೆ (ಮಿಮೀ)", phLabel: "ಮಣ್ಣಿನ ಪಿಎಚ್", tempLabel: "ಸರಾಸರಿ ತಾಪಮಾನ (°C)", recommendCropButton: "ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
+                    regionalAnalysisHeader: "ಪ್ರಾದೇಶಿಕ ಬೆಳೆ ವಿಶ್ಲೇಷಣೆ", tableHeaderRegion: "ಪ್ರದೇಶ", tableHeaderCrop: "ಬೆಳೆ", tableHeaderPredictedPrice: "ಊಹಿಸಿದ ಬೆಲೆ", tableHeaderTrend: "ಪ್ರವೃತ್ತಿ", tableHeaderSentiment: "ಭಾವನೆ",
+                    xaiHeader: "ವಿವರಿಸಬಹುದಾದ AI ಒಳನೋಟಗಳು", xaiText: "ಭವಿಷ್ಯವಾಣಿಯ ಮೇಲೆ ಪ್ರಭಾವ ಬೀರುವ ಅಂಶಗಳನ್ನು ನೋಡಲು 'ಬೆಲೆ ಊಹಿಸಿ' ಕ್ಲಿಕ್ ಮಾಡಿ.", heatmapHeader: "ಪ್ರಾದೇಶಿಕ ಬೆಲೆ ಹೀಟ್‌ಮ್ಯಾಪ್",
+                    alertsHeader: "ಎಚ್ಚರಿಕೆಗಳು ಮತ್ತು ಶಿಫಾರಸುಗಳು", alertsText: "ಈ ಕ್ಷಣದಲ್ಲಿ ಯಾವುದೇ ಹೊಸ ಎಚ್ಚರಿಕೆಗಳು ಅಥವಾ ಶಿಫಾರಸುಗಳಿಲ್ಲ.", analyticsHeader: "ಗಾಗಿ ವಿಶ್ಲೇಷಣೆ",
+                    analyticsDescription: "ಈ ವಿಶ್ಲೇಷಣೆಗಳನ್ನು ನವೀಕರಿಸಲು ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಮುನ್ಸೂಚನೆಯನ್ನು ರನ್ ಮಾಡಿ.", modelPerformanceHeader: "ಮಾದರಿ ಕಾರ್ಯಕ್ಷಮತೆ ಮೆಟ್ರಿಕ್ಸ್", accuracyLabel: "ನಿಖರತೆ (R²)",
+                    maeLabel: "MAE (ಸರಾಸರಿ ಸಂಪೂರ್ಣ ದೋಷ)", rmseLabel: "RMSE (ರೂಟ್ ಮೀನ್ ಸ್ಕ್ವೇರ್ಡ್ ಎರರ್)", featureImportanceHeader: "ಪ್ರಮುಖ ಬೆಲೆ ಚಾಲಕರು (ವೈಶಿಷ್ಟ್ಯ ಪ್ರಾಮುಖ್ಯತೆ)",
+                    sentimentDistributionHeader: "ಸುದ್ದಿ ಭಾವನೆ ವಿತರಣೆ", marketComparisonHeader: "ಪ್ರಮುಖ ಮಾರುಕಟ್ಟೆಗಳಲ್ಲಿ ಬೆಲೆ ಹೋಲಿಕೆ", weatherImpactHeader: "ಗಾಗಿ ಹವಾಮಾನ ಪರಿಣಾಮ ವಿಶ್ಲೇಷಣೆ",
+                    weatherImpactPlaceholder: "ಹವಾಮಾನ ವಿಶ್ಲೇಷಣೆ ನೋಡಲು ಮಾರುಕಟ್ಟೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ಬೆಲೆಯನ್ನು ಊಹಿಸಿ.", dataQualityHeader: "ಡೇಟಾ ಗುಣಮಟ್ಟ ಮೇಲ್ವಿಚಾರಣೆ", reportsHeader: "ವರದಿ ಜನರೇಟರ್",
+                    generateReportHeader: "ಕಸ್ಟಮ್ ವರದಿ ರಚಿಸಿ", generateReportSummary: "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ನಡೆಸಿದ ಇತ್ತೀಚಿನ ಬೆಲೆ ಮುನ್ಸೂಚನೆ ಮತ್ತು ವಿಶ್ಲೇಷಣೆಯ ಆಧಾರದ ಮೇಲೆ ವಿವರವಾದ ಪಿಡಿಎಫ್ ವರದಿಯನ್ನು ರಚಿಸಿ. ನೀವು ಮೊದಲು ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಮುನ್ಸೂಚನೆಯನ್ನು ಚಲಾಯಿಸಿದ್ದೀರಿ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.",
+                    generateReportButtonText: "ವರದಿ ರಚಿಸಿ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ (ಪಿಡಿಎಫ್)", settingsHeader: "ಸಂಯೋಜನೆಗಳು ಮತ್ತು ಸಂರಚನೆ", dataSourceHeader: "ಡೇಟಾ ಮೂಲ ನಿರ್ವಹಣೆ", syncDataButtonText: "ಈಗ ಎಲ್ಲಾ ಡೇಟಾವನ್ನು ಸಿಂಕ್ ಮಾಡಿ",
+                    chatbotHeader: "ಅಗ್ರೋಬರ್ಟ್ ಚಾಟ್‌ಬಾಟ್", geminiApiKeyLabel: "ಜೆಮಿನಿ API ಕೀ (ಐಚ್ಛಿಕ)", chatWelcomeMessage: "ನಮಸ್ಕಾರ! ನಾನು ಅಗ್ರೋಬರ್ಟ್. ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",
+                    pricePredictionResultLoading: '<span class="loading-spinner"></span> ಭವಿಷ್ಯ ನುಡಿಯಲಾಗುತ್ತಿದೆ...', predictedFor: (commodity, market, days) => `<strong>${commodity}</strong> ಗಾಗಿ <strong>${market}</strong> ನಲ್ಲಿ ${days} ದಿನಗಳಲ್ಲಿ ಊಹಿಸಲಾದ ಮಾದರಿ ಬೆಲೆ:`,
+                    unit: 'INR/ಕ್ವಿಂಟಾಲ್', sentimentAnalysisResultLoading: '<span class="loading-spinner"></span> ಭಾವನೆಯನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...',
+                    sentimentResultText: (sentiment, score) => `ಪತ್ತೆಯಾದ ಭಾವನೆ: <strong>${sentiment}</strong> (ಸ್ಕೋರ್: ${score.toFixed(2)})`,
+                    xaiFactors: (factors) => `<p class="font-bold">ಪ್ರಮುಖ ಪ್ರಭಾವಿ ಅಂಶಗಳು:</p><ul class="list-disc pl-5 mt-2 text-sm">${factors.map(f => `<li class="${f.impact === 'Positive' ? 'text-green-700' : f.impact === 'Negative' ? 'text-red-700' : 'text-gray-700'}">${f.factor} (${f.impact} ಪ್ರಭಾವ)</li>`).join('')}</ul>`,
+                    weatherImpactText: (market, temp, condition, impact) => `<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>${market} ನಲ್ಲಿ ಪ್ರಸ್ತುತ ಪರಿಸ್ಥಿತಿಗಳು:</strong> ${temp}°C, ${condition}.</p><p class="mt-2"><strong>ಪರಿಣಾಮ ವಿಶ್ಲೇಷಣೆ:</strong> ${impact}</p></div></div>`,
+                    reportGenerating: '<span class="loading-spinner"></span> ವರದಿ ತಯಾರಾಗುತ್ತಿದೆ...', reportGenerated: '✅ ವರದಿ ಯಶಸ್ವಿಯಾಗಿ ರಚಿಸಲಾಗಿದೆ! ಡೌನ್‌ಲೋಡ್ ಪ್ರಾರಂಭವಾಗಿದೆ.',
+                    reportError: '❌ ವರದಿ ರಚಿಸುವಲ್ಲಿ ದೋಷ. ದಯವಿಟ್ಟು ಭವಿಷ್ಯವಾಣಿಯನ್ನು ಮಾಡಲಾಗಿದೆಯೇ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.', chatSuggestions: ["ಪಂಜಾಬ್‌ನಲ್ಲಿ ಗೋಧಿ ಬೆಲೆ?", "ಅಕ್ಕಿ ಮೇಲೆ ಮಾನ್ಸೂನ್ ಪ್ರಭಾವ?", "ನನ್ನ ಪ್ರದೇಶಕ್ಕೆ ಬೆಳೆ ಶಿಫಾರಸು ಮಾಡಿ."],
+                    cropRecommendationLoading: '<span class="loading-spinner"></span> ಉತ್ತಮ ಬೆಳೆಯನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ...', cropRecommendationResult: (crop, reason) => `<p><strong>ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ:</strong> <span class="text-green-700 font-bold">${crop}</span></p><p class="text-sm mt-1">${reason}</p>`,
+                    weather: {"Clear": "ಸ್ಪಷ್ಟ", "Partly Cloudy": "ಭಾಗಶಃ ಮೋಡ", "Light Rain": "ಸಣ್ಣ ಮಳೆ", "Sunny": "ಬಿಸಿಲು"}
+                }
+            };
+
+            // --- API CALLS (REPLACING SIMULATIONS) ---
+            async function postData(url = '', data = {}) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            }
+            
+            async function getData(url = '') {
+                 const response = await fetch(url);
+                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                 return response.json();
+            }
+
+            // --- CHARTING & VISUALIZATION (SAME AS ORIGINAL) ---
+            let priceChartInstance = null;
+            function renderPriceChart(data) {
+                if (priceChartInstance) priceChartInstance.destroy();
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                priceChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.dates,
+                        datasets: [{
+                            label: 'Historical Price',
+                            data: data.prices.slice(0, -1),
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }, {
+                            label: 'Predicted Price',
+                            data: Array(data.prices.length - 2).fill(null).concat(data.prices.slice(-2)),
+                            borderColor: 'rgb(255, 99, 132)',
+                            borderDash: [5, 5],
+                            pointRadius: 5,
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+            
+            function renderFeatureImportanceChart(commodity) {
+                if (featureImportanceChartInstance) featureImportanceChartInstance.destroy();
+                const ctx = document.getElementById('featureImportanceChart').getContext('2d');
+                const factors = ['Weather', 'Mandi Arrivals', 'Historical Price', 'Sentiment', 'Fuel Cost'];
+                const importance = factors.map(() => Math.random() * (commodity.length / 5));
+                featureImportanceChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: factors,
+                        datasets: [{
+                            label: 'Factor Importance',
+                            data: importance,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+
+            function renderSentimentPieChart() {
+                if (sentimentPieChartInstance) sentimentPieChartInstance.destroy();
+                const ctx = document.getElementById('sentimentPieChart').getContext('2d');
+                sentimentPieChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Positive', 'Negative', 'Neutral'],
+                        datasets: [{
+                            label: 'Sentiment Distribution',
+                            data: [Math.random() * 50, Math.random() * 20, Math.random() * 30],
+                            backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            function renderMarketComparisonBarChart(commodity, basePrice) {
+                if (marketComparisonChartInstance) marketComparisonChartInstance.destroy();
+                const ctx = document.getElementById('marketComparisonChart').getContext('2d');
+                const markets = ['Delhi', 'Mumbai', 'Bengaluru', 'Kolkata', 'Chennai'];
+                const prices = markets.map(m => basePrice * (0.95 + Math.random() * 0.1));
+                marketComparisonChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: markets,
+                        datasets: [{
+                            label: `${commodity} Price (INR/Quintal)`,
+                            data: prices,
+                            backgroundColor: '#3b82f6',
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+
+            async function drawHeatmap(commodity = 'Wheat') {
+                const container = document.getElementById('heatmapContainer');
+                container.querySelector('svg')?.remove(); // Clear previous svg
+                const legendContainer = document.getElementById('heatmapLegend');
+                legendContainer.innerHTML = ''; // Clear legend
+
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                const svg = d3.select("#heatmapContainer").append("svg").attr("width", width).attr("height", height);
+                const projection = d3.geoMercator().scale(width * 1.2).center([82.8, 23.4]).translate([width / 2, height / 2]);
+                const path = d3.geoPath().projection(projection);
+                const tooltip = d3.select("#tooltip");
+                try {
+                    const india = await d3.json("https://raw.githubusercontent.com/geohacker/india/master/state/india_state.geojson");
+                    const basePrices = { 'Wheat': 2200, 'Rice': 3000, 'Cotton': 6000, 'Onion': 1700 };
+                    const basePrice = basePrices[commodity] || 2500;
+                    const priceData = new Map();
+                    india.features.forEach(d => priceData.set(d.properties.NAME_1, Math.floor(basePrice * (0.8 + Math.random() * 0.4))));
+                    
+                    const priceRange = d3.extent(Array.from(priceData.values()));
+                    const colorScale = d3.scaleSequential(d3.interpolateYlGn).domain(priceRange);
+
+                    svg.selectAll("path").data(india.features).enter().append("path")
+                        .attr("d", path).attr("class", "state")
+                        .attr("fill", d => colorScale(priceData.get(d.properties.NAME_1) || 0))
+                        .on("mouseover", (event, d) => {
+                            tooltip.transition().duration(200).style("opacity", .9);
+                            tooltip.html(`<strong>${d.properties.NAME_1}</strong><br/>Avg. ${commodity} Price: ₹${priceData.get(d.properties.NAME_1)}`)
+                                .style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px");
+                        })
+                        .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
+                    // Add Legend
+                    const legendWidth = 100, legendHeight = 10;
+                    const legendSvg = d3.select("#heatmapLegend").append("svg").attr("width", legendWidth + 20).attr("height", legendHeight + 20);
+                    const defs = legendSvg.append("defs");
+                    const linearGradient = defs.append("linearGradient").attr("id", "linear-gradient");
+                    linearGradient.selectAll("stop")
+                        .data(colorScale.ticks().map((t, i, n) => ({ offset: `${100*i/n.length}%`, color: colorScale(t) })))
+                        .enter().append("stop")
+                        .attr("offset", d => d.offset)
+                        .attr("stop-color", d => d.color);
+                    
+                    legendSvg.append("rect").attr("x", 10).attr("y", 0).attr("width", legendWidth).attr("height", legendHeight).style("fill", "url(#linear-gradient)");
+                    legendSvg.append("text").text(`₹${priceRange[0]}`).attr("x", 10).attr("y", legendHeight + 10).style("font-size", "10px");
+                    legendSvg.append("text").text(`₹${priceRange[1]}`).attr("x", legendWidth).attr("y", legendHeight + 10).style("font-size", "10px").attr("text-anchor", "end");
+                } catch (error) {
+                    console.error("Failed to load GeoJSON for heatmap:", error);
+                    container.innerHTML = `<p class="text-red-500 text-center">Could not load map data.</p>`;
+                }
+            }
+
+            // --- UI UPDATE FUNCTIONS ---
+            function applyTranslations(lang) {
+                const t = translations[lang];
+                document.querySelectorAll('[id]').forEach(element => {
+                    if (t[element.id]) {
+                        element.innerHTML = t[element.id];
+                    }
+                });
+                document.querySelector('#quickPredictPriceText').textContent = t.quickPredictPriceText;
+                document.querySelector('#quickAnalyzeSentimentText').textContent = t.quickAnalyzeSentimentText;
+                document.querySelector('#quickRegionalAnalysisText').textContent = t.quickRegionalAnalysisText;
+                document.querySelector('#predictButton').textContent = t.predictButton;
+                document.querySelector('#analyzeSentimentButton').textContent = t.analyzeSentimentButton;
+                document.querySelector('#recommendCropButton').textContent = t.recommendCropButton;
+                document.querySelector('#generateReportButtonText').textContent = t.generateReportButtonText;
+                document.querySelector('#syncDataButtonText').textContent = t.syncDataButtonText;
+                document.querySelector('#navDashboard').textContent = t.navDashboard;
+                document.querySelector('#navAnalytics').textContent = t.navAnalytics;
+                document.querySelector('#navReports').textContent = t.navReports;
+                document.querySelector('#navSettings').textContent = t.navSettings;
+                document.querySelector('#analyticsHeader').innerHTML = `${t.analyticsHeader} <span id="analyticsCropName" class="text-blue-600">${dashboardState.commodity}</span>`;
+                document.querySelector('#weatherImpactHeader').innerHTML = `${t.weatherImpactHeader} <span id="weatherMarketName" class="text-blue-600">${dashboardState.market}</span>`;
+                chatInput.placeholder = "Ask a question...";
+                setupChatSuggestions(lang);
+            }
+
+            function updateMetricCards(prediction) {
+                document.getElementById('avgDailyPrice').textContent = `₹ ${parseFloat(prediction.predicted_modal_price_INR).toLocaleString('en-IN')}`;
+                document.getElementById('marketTrend').textContent = ['Up', 'Down', 'Stable'][Math.floor(Math.random() * 3)];
+            }
+
+            async function updateWeatherWidget(market) {
+                try {
+                    const weatherData = await getData(`${API_BASE_URL}/weather?market=${market}`);
+                    dashboardState.weatherData = weatherData; // Save to state
+                    const lang = languageSelect.value;
+                    const translatedCondition = translations[lang].weather[weatherData.condition] || weatherData.condition;
+                    
+                    weatherWidget.innerHTML = `
+                        <i class="fas fa-cloud-sun"></i>
+                        <span>${weatherData.market}: ${weatherData.temp}°C, ${translatedCondition}</span>
+                    `;
+                } catch (error) {
+                    console.error("Error fetching weather:", error);
+                    weatherWidget.innerHTML = `<span>Weather data unavailable.</span>`;
+                }
+            }
+            
+            function updateAnalytics(commodity, market, price) {
+                const lang = languageSelect.value;
+                document.getElementById('analyticsCropName').textContent = commodity;
+                document.getElementById('weatherMarketName').textContent = market;
+                
+                renderFeatureImportanceChart(commodity);
+                renderSentimentPieChart();
+                renderMarketComparisonBarChart(commodity, parseFloat(price));
+                
+                document.getElementById('accuracyValue').textContent = (0.91 + Math.random() * 0.05).toFixed(2);
+                document.getElementById('maeValue').textContent = `₹ ${(40 + Math.random() * 10).toFixed(2)}`;
+                document.getElementById('rmseValue').textContent = `₹ ${(60 + Math.random() * 15).toFixed(2)}`;
+                
+                const weatherImpactContent = document.getElementById('weatherImpactContent');
+                weatherImpactContent.innerHTML = '<span class="loading-spinner"></span>';
+                const weatherData = dashboardState.weatherData;
+                const translatedCondition = translations[lang].weather[weatherData.condition] || weatherData.condition;
+                weatherImpactContent.innerHTML = translations[lang].weatherImpactText(market, weatherData.temp, translatedCondition, weatherData.impact);
+            }
+            
+            function toggleCollapsible(sectionId) {
+                const section = document.getElementById(sectionId);
+                const allSections = document.querySelectorAll('.collapsible-section');
+                allSections.forEach(sec => {
+                    if (sec.id !== sectionId) {
+                        sec.classList.remove('show');
+                    }
+                });
+                section.classList.toggle('show');
+            }
+            
+            function setupChatSuggestions(lang) {
+                const suggestionsContainer = document.getElementById('chatbotSuggestions');
+                suggestionsContainer.innerHTML = '';
+                const suggestions = translations[lang].chatSuggestions;
+                suggestions.forEach(text => {
+                    const button = document.createElement('button');
+                    button.className = 'chatbot-suggestion-button';
+                    button.textContent = text;
+                    button.onclick = () => {
+                        chatInput.value = text;
+                        sendChatButton.click();
+                    };
+                    suggestionsContainer.appendChild(button);
+                });
+            }
+
+            // --- EVENT LISTENERS ---
+            predictButton.addEventListener('click', async () => {
+                const lang = languageSelect.value;
+                dashboardState.commodity = commodityInput.value;
+                dashboardState.market = marketInput.value;
+                const daysAhead = parseInt(daysAheadInput.value);
+
+                priceResultDiv.innerHTML = translations[lang].pricePredictionResultLoading;
+                priceResultDiv.classList.remove('hidden');
+                xaiResultDiv.innerHTML = '<span class="loading-spinner"></span>';
+                alertsResultDiv.innerHTML = '<span class="loading-spinner"></span>';
+
+                try {
+                    await updateWeatherWidget(dashboardState.market);
+                    
+                    const payload = {
+                        commodity: dashboardState.commodity,
+                        market: dashboardState.market,
+                        daysAhead: daysAhead
+                    };
+                    const response = await postData(`${API_BASE_URL}/predict`, payload);
+                    
+                    dashboardState.prediction = response.prediction;
+                    dashboardState.chartData = response.chartData;
+                    dashboardState.xai = response.xai;
+                    
+                    priceResultDiv.innerHTML = `<p>${translations[lang].predictedFor(dashboardState.commodity, dashboardState.market, daysAhead)} <strong>₹ ${response.prediction.predicted_modal_price_INR}</strong> ${translations[lang].unit}</p>`;
+                    renderPriceChart(response.chartData);
+                    xaiResultDiv.innerHTML = translations[lang].xaiFactors(response.xai);
+                    updateMetricCards(response.prediction);
+                    updateAnalytics(dashboardState.commodity, dashboardState.market, response.prediction.predicted_modal_price_INR);
+                    
+                    alertsResultDiv.innerHTML = "✅ No significant alerts or recommendations for today.";
+                } catch (error) {
+                    console.error("Prediction failed:", error);
+                    priceResultDiv.innerHTML = `Error: Could not fetch prediction. Is the backend server running?`;
+                }
+            });
+
+            analyzeSentimentButton.addEventListener('click', async () => {
+                const lang = languageSelect.value;
+                sentimentResultDiv.innerHTML = translations[lang].sentimentAnalysisResultLoading;
+                sentimentResultDiv.classList.remove('hidden');
+                
+                try {
+                    const result = await postData(`${API_BASE_URL}/analyze-sentiment`, { text: document.getElementById('newsText').value });
+                    sentimentResultDiv.innerHTML = translations[lang].sentimentResultText(result.sentiment, result.score);
+                } catch (error) {
+                    console.error("Sentiment analysis failed:", error);
+                    sentimentResultDiv.innerHTML = `Error: Could not analyze sentiment.`;
+                }
+            });
+
+            recommendCropButton.addEventListener('click', async () => {
+                const lang = languageSelect.value;
+                recommendationResult.innerHTML = translations[lang].cropRecommendationLoading;
+                recommendationResult.classList.remove('hidden');
+
+                const payload = {
+                    soil: document.getElementById('soilType').value,
+                    rainfall: document.getElementById('rainfall').value,
+                    ph: document.getElementById('phValue').value,
+                    temp: document.getElementById('temperature').value
+                };
+                
+                try {
+                    const result = await postData(`${API_BASE_URL}/recommend-crop`, payload);
+                    recommendationResult.innerHTML = translations[lang].cropRecommendationResult(result.crop, result.reason);
+                } catch (error) {
+                    console.error("Crop recommendation failed:", error);
+                    recommendationResult.innerHTML = `Error: Could not get recommendation.`;
+                }
+            });
+            
+            heatmapCommoditySelect.addEventListener('change', (e) => {
+                drawHeatmap(e.target.value);
+            });
+            document.getElementById('quickPredictPrice').addEventListener('click', () => toggleCollapsible('pricePredictionSection'));
+            document.getElementById('quickAnalyzeSentiment').addEventListener('click', () => toggleCollapsible('sentimentAnalysisSection'));
+            
+            allNavLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.id.replace('nav', '').toLowerCase() + 'Content';
+                    allContentSections.forEach(sec => sec.classList.add('hidden'));
+                    document.getElementById(targetId).classList.remove('hidden');
+                    allNavLinks.forEach(nav => nav.classList.remove('active'));
+                    link.classList.add('active');
+                });
+            });
+
+            generateReportButton.addEventListener('click', async () => {
+                const lang = languageSelect.value;
+                if (!dashboardState.prediction) {
+                    reportStatusDiv.innerHTML = `<p class="text-red-600">${translations[lang].reportError}</p>`;
+                    return;
+                }
+                
+                reportStatusDiv.innerHTML = `<p class="text-blue-600">${translations[lang].reportGenerating}</p>`;
+                
+                const { jsPDF } = window.jspdf;
+                const reportElement = document.getElementById('report-generator');
+                
+                reportElement.style.position = 'absolute';
+                reportElement.style.left = '-9999px';
+                reportElement.style.display = 'block';
+                
+                document.getElementById('report-title').innerText = `${dashboardState.commodity} Price Report for ${dashboardState.market}`;
+                document.getElementById('report-date').innerText = new Date().toLocaleDateString('en-IN');
+                document.getElementById('report-prediction-summary').innerHTML = priceResultDiv.innerHTML;
+                document.getElementById('report-xai-container').innerHTML = xaiResultDiv.innerHTML;
+                document.getElementById('report-table-container').innerHTML = document.querySelector('.overflow-x-auto table').outerHTML;
+                document.getElementById('report-chart-container').innerHTML = `<img src="${priceChartInstance.toBase64Image()}" class="chart-image">`;
+                
+                const news = await getData(`${API_BASE_URL}/news`);
+                document.getElementById('report-news-container').innerHTML = `<ul>${news.map(n => `<li>${n}</li>`).join('')}</ul>`;
+
+                const canvas = await html2canvas(reportElement, { scale: 2 });
+                const imgData = canvas.toDataURL('image/png');
+                reportElement.style.display = 'none';
+                
+                const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`AgroBert_${dashboardState.commodity}_Report.pdf`);
+                
+                reportStatusDiv.innerHTML = `<p class="text-green-600">${translations[lang].reportGenerated}</p>`;
+            });
+
+            languageSelect.addEventListener('change', (e) => {
+                applyTranslations(e.target.value);
+                if(dashboardState.weatherData) {
+                    const lang = e.target.value;
+                    const weatherData = dashboardState.weatherData;
+                    const translatedCondition = translations[lang].weather[weatherData.condition] || weatherData.condition;
+                    weatherWidget.innerHTML = `
+                        <i class="fas fa-cloud-sun"></i>
+                        <span>${weatherData.market}: ${weatherData.temp}°C, ${translatedCondition}</span>
+                    `;
+                }
+            });
+
+            const handleSendChat = async () => {
+                const userQuery = chatInput.value.trim();
+                if (!userQuery) return;
+
+                const userMessageDiv = document.createElement('div');
+                userMessageDiv.className = 'message-bubble user-message';
+                userMessageDiv.innerHTML = `<p>${userQuery}</p>`;
+                chatbotMessagesDiv.appendChild(userMessageDiv);
+                chatInput.value = '';
+                chatbotMessagesDiv.scrollTop = chatbotMessagesDiv.scrollHeight;
+
+                const botThinkingDiv = document.createElement('div');
+                botThinkingDiv.className = 'message-bubble bot-message';
+                botThinkingDiv.innerHTML = `<span class="loading-spinner"></span>`;
+                chatbotMessagesDiv.appendChild(botThinkingDiv);
+                chatbotMessagesDiv.scrollTop = chatbotMessagesDiv.scrollHeight;
+                
+                try {
+                    const payload = { query: userQuery };
+                    const result = await postData(`${API_BASE_URL}/chat`, payload);
+                    botThinkingDiv.innerHTML = `<p>${result.response}</p>`;
+                } catch (error) {
+                    console.error("Chatbot failed:", error);
+                    botThinkingDiv.innerHTML = `<p>Error: Could not connect to the chat service.</p>`;
+                } finally {
+                    chatbotMessagesDiv.scrollTop = chatbotMessagesDiv.scrollHeight;
+                }
+            };
+
+            sendChatButton.addEventListener('click', handleSendChat);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSendChat();
+            });
+
+            // --- INITIALIZATION ---
+            async function initializeDashboard() {
+                applyTranslations('en');
+                populateRegionalAnalysisTable();
+                await updateWeatherWidget('Delhi');
+                drawHeatmap(heatmapCommoditySelect.value);
+                renderPriceChart({
+                    dates: Array.from({length: 30}, (_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (29 - i));
+                        return d.toISOString().split('T')[0];
+                    }),
+                    prices: Array.from({length: 30}, () => 2200 + Math.random() * 200)
+                });
+                renderFeatureImportanceChart('Wheat');
+                renderSentimentPieChart();
+                renderMarketComparisonBarChart('Wheat', 2250);
+            }
+            
+            function populateRegionalAnalysisTable() {
+                const regionalData = [
+                    { region: 'Delhi', crop: 'Wheat', predictedPrice: 2350, trend: 'Up', sentiment: 'Positive' },
+                    { region: 'Mumbai', crop: 'Rice', predictedPrice: 3100, trend: 'Down', sentiment: 'Neutral' },
+                    { region: 'Bengaluru', crop: 'Tomato', predictedPrice: 1280, trend: 'Up', sentiment: 'Positive' },
+                    { region: 'Pune', crop: 'Onion', predictedPrice: 1800, trend: 'Down', sentiment: 'Negative' },
+                    { region: 'Lucknow', crop: 'Potato', predictedPrice: 1550, trend: 'Up', sentiment: 'Neutral' },
+                ];
+                regionalAnalysisTableBody.innerHTML = '';
+                regionalData.forEach(data => {
+                    const row = regionalAnalysisTableBody.insertRow();
+                    row.className = "border-b border-gray-200 hover:bg-gray-50";
+                    row.innerHTML = `
+                        <td class="py-3 px-6 text-left whitespace-nowrap">${data.region}</td>
+                        <td class="py-3 px-6 text-left">${data.crop}</td>
+                        <td class="py-3 px-6 text-left">₹${data.predictedPrice}/Qtl</td>
+                        <td class="py-3 px-6 text-left ${data.trend === 'Up' ? 'text-green-600' : 'text-red-600'}">${data.trend} ${data.trend === 'Up' ? '<i class="fas fa-arrow-up"></i>' : '<i class="fas fa-arrow-down"></i>'}</td>
+                        <td class="py-3 px-6 text-left">${data.sentiment}</td>
+                    `;
+                });
+            }
+
+            initializeDashboard();
+        });
+    </script>
+</body>
+</html>
